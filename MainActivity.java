@@ -3,57 +3,43 @@ package com.example.robome;
 import static android.content.ContentValues.TAG;
 
 import android.Manifest;
-import android.animation.Animator;
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.hardware.Sensor;
-import android.media.MediaPlayer;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
-import android.preference.PreferenceManager;
-import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.LinearInterpolator;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.PopupMenu;
-import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.speech.tts.TextToSpeech;
+import android.os.Bundle;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.wowwee.robome.IRStatus;
-import com.wowwee.robome.RoboMe;
-import com.wowwee.robome.RoboMeCommands;
-import com.wowwee.robome.SensorStatus;
+import com.wowwee.robome.*;
+import com.wowwee.robome.RoboMeCommands.*;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
+import android.widget.Toast;
+//import android.support.v7.app.AppCompatActivity;
+
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.UUID;
-import java.util.Locale;
-import android.media.AudioManager;
-
-//import android.support.v7.app.AppCompatActivity;
 
 
 public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeListener, PopupMenu.OnMenuItemClickListener, AdapterView.OnItemClickListener {
@@ -65,38 +51,29 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
     BluetoothAdapter mBluetoothAdapter;
 
     BTConnectionService mBTConnection;
-    ProgressBar mouth;
-    IRStatus irStatus;
-    SensorStatus sensorStatus;
-    ImageView eyeLeft;
-    ImageView eyeRight;
-    ImageView eyebrowLeft, eyebrowRight;
-    ObjectAnimator downAnimatorL, downAnimatorR;
-    ObjectAnimator upAnimatorL, upAnimatorR;
-    AnimatorSet animatorSet;
-    MediaPlayer wink;
-    TextToSpeech ttsGenerator;
-    //static final String PBAP_UUID = "0000112f-0000-1000-8000-00805f9b34fb";
+    // static final String PBAP_UUID = "0000112f-0000-1000-8000-00805f9b34fb";
 
+    // private static final UUID MY_UUID_INSECURE = UUID.fromString("d14a9f18-9d72-11ed-a8fc-0242ac120002");
 
-
-    //private static final UUID MY_UUID_INSECURE = UUID.fromString("d14a9f18-9d72-11ed-a8fc-0242ac120002");
     private static final UUID MY_UUID_INSECURE = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
 
-
-    // ParcelUuid.fromString(PBAP_UUID).getUuid();
+    //   ParcelUuid.fromString(PBAP_UUID).getUuid();
     //   UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
-    //  UUID.fromString("12d09990-96ae-11ed-87cd-0800200c9a66");
 
 
     BluetoothDevice mBTDevice;
 
     TextView incomingMessage;
 
-    Button btnBT;
-
-    int speed;
+    Button btnBT, btnForward, btnBackward, btnLeft, btnRight;
+    Button btnSpeed, btnHeadUp, btnHeadDown;
+    Button btnEdge, btnChest;
+    Button winkLeft, winkRight;
+    Button testBtn;
+    EditText tekst;
+    ImageButton btnR1, btnR2, btnR3, btnR4, btnR5, btnR6;
+    boolean chestValue, edgeValue;
 
 
     public ArrayList<BluetoothDevice> mBTDevices = new ArrayList<>();
@@ -106,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
     private AlertDialog.Builder dialogBuilder;
     private AlertDialog dialog;
     private Button btnBack;
+
 
 
     // Create a BroadcastReceiver for ACTION_FOUND
@@ -176,10 +154,12 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
                 mBTDevices.add(device);
                 checkBTPermission(context, Manifest.permission.BLUETOOTH_CONNECT);
 
-                Log.d(TAG, "********************************************************** onReceive: " + device.getName() + " Address: " + device.getAddress());
+                Log.d(TAG, "nReceive: " + device.getName() + " Address: " + device.getAddress());
                 mDeviceListAdapter = new DeviceListAdapter(context, R.layout.device_adapter_view, mBTDevices);
                 lvNewDevices.setAdapter(mDeviceListAdapter);
             }
+            if (action.equals(BluetoothAdapter.ACTION_DISCOVERY_FINISHED))
+                Log.d(TAG, "**********************************************************DISCOVERY FINISHED!!!: ");
         }
     };
 
@@ -221,63 +201,631 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
 
 
 
-    @SuppressLint("WrongViewCast")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         robome = new RoboMe(this, this);
-        speed = 5;
 
-        wink = MediaPlayer.create(this,R.raw.wink);
         setContentView(R.layout.activity_main);
-        mouth = findViewById(R.id.Mouth);
-        eyeLeft = findViewById(R.id.eyeLeft);
-        eyeRight = findViewById(R.id.eyeRight);
-
-        ttsGenerator = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int i) {
-                if(i != TextToSpeech.ERROR)
-                {
-                    ttsGenerator.setLanguage(new Locale("mk"));
-                }
-            }
-        });
 
 
-        btnBT = (Button)findViewById(R.id.btnConnect);
-        btnBT.setOnClickListener(new View.OnClickListener() {
+        btnBT = (Button) findViewById(R.id.btnConnect);
+        btnForward = (Button) findViewById(R.id.forward);
+        btnBackward = (Button) findViewById(R.id.backward);
+        btnLeft = (Button) findViewById(R.id.left);
+        btnRight = (Button) findViewById(R.id.right);
+        btnEdge = (Button) findViewById(R.id.edge);
+        btnChest = (Button) findViewById(R.id.chest);
+        btnHeadUp = (Button) findViewById(R.id.headUp);
+        btnHeadDown = (Button) findViewById(R.id.headDown);
+        btnSpeed = (Button) findViewById(R.id.speed);
+        winkLeft = findViewById(R.id.winkLeft);
+        winkRight = findViewById(R.id.winkRight);
+        btnR1 = findViewById(R.id.buttonR1);
+        btnR2 = findViewById(R.id.buttonR2);
+        btnR3 = findViewById(R.id.buttonR3);
+        btnR4 = findViewById(R.id.buttonR4);
+        btnR5 = findViewById(R.id.buttonR5);
+        btnR6 = findViewById(R.id.buttonR6);
+        //btnR7 = findViewById(R.id.buttonR7);
+        //btnR8 = findViewById(R.id.buttonR8);
+        //btnR9 = findViewById(R.id.buttonR9);
+        //btnR10 = findViewById(R.id.buttonR10);
+        testBtn = findViewById(R.id.buttonSend);
+        tekst = findViewById(R.id.editText);
+
+
+        testBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                Log.d(TAG, "LOG 1");
-                PopupMenu popup = new PopupMenu(MainActivity.this, view);
-                Log.d(TAG, "LOG 2");
+                String command = tekst.getText().toString();
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset())); }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
 
-                popup.setOnMenuItemClickListener(MainActivity.this);
-                Log.d(TAG, "LOG 3");
-
-                popup.inflate(R.menu.connect_menu);
-                Log.d(TAG, "LOG 4");
-
-                popup.show();
 
             }
         });
 
-        robome.setVolume(12);
-        robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_ChestDetectOff);
-        robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_EdgeDetectOff);
+        // voice commands send
+        btnR1.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
 
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikaeden";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        btnR2.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikadva";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        btnR3.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikatri";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        btnR4.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikachetiri";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        btnR5.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikapet";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        btnR6.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "replikashest";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+
+
+
+
+
+
+        chestValue = false;
+        edgeValue = false; // edge and chest detection is off in the beginning
+
+
+
+
+
+        // menu
+        btnBT.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PopupMenu popup = new PopupMenu(MainActivity.this, view);
+                popup.setOnMenuItemClickListener(MainActivity.this);
+                popup.inflate(R.menu.connect_menu);
+                popup.show();
+            }
+        });
+
+        // speed menu
+        btnSpeed.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PopupMenu popup = new PopupMenu(MainActivity.this, view);
+                popup.setOnMenuItemClickListener(MainActivity.this);
+                popup.inflate(R.menu.speed_menu);
+                popup.show();
+            }
+        });
+
+        // movement commands
+        btnForward.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "forward";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+
+        });
+
+        btnForward.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "forward";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset())); }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
+
+
+
+        btnBackward.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerB;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerB != null) return true;
+                        mHandlerB = new Handler();
+                        mHandlerB.post(mActionB);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerB == null) return true;
+                        mHandlerB.removeCallbacks(mActionB);
+                        mHandlerB = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionB = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "backward";
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerB.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+
+        });
+
+        btnBackward.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "backward";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+        });
+
+        btnLeft.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerL;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerL != null) return true;
+                        mHandlerL = new Handler();
+                        mHandlerL.post(mActionL);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerL == null) return true;
+                        mHandlerL.removeCallbacks(mActionL);
+                        mHandlerL = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionL = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "left";
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerL.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+
+        });
+
+        btnLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "left";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }
+            }
+        });
+
+
+        btnRight.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerR;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerR != null) return true;
+                        mHandlerR = new Handler();
+                        mHandlerR.post(mActionR);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerR== null) return true;
+                        mHandlerR.removeCallbacks(mActionR);
+                        mHandlerR = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionR = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "right";
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerR.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+
+        });
+
+        btnRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "right";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+        });
+
+        // head commands
+        btnHeadUp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "headup";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }
+            }
+        });
+
+        btnHeadDown.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "headdown";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }            }
+        });
+
+        // chest and edge detection commands
+        btnEdge.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command;
+                if (edgeValue) {
+                    command = "edgeoff";
+                    edgeValue = false; }
+                else {
+                    command = "edgeon";
+                    edgeValue = true;
+                }
+                // String command = "edge";
+
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }            }
+        });
+
+        btnChest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command;
+                if (chestValue) {
+                    command = "chestoff";
+                    chestValue = false; }
+                else {
+                    command = "cheston";
+                    chestValue = true;
+                }
+                //  String command = "chest";
+
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }            }
+        });
+
+        // eye commands
+        winkLeft.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "winkl";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        winkLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "winkl";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }
+
+            }
+        });
+
+        winkRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String command = "winkr";
+                try {
+                    mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                } catch (Exception e) {e.printStackTrace(); }
+
+            }
+        });
+
+        winkRight.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandlerF;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandlerF != null) return true;
+                        mHandlerF = new Handler();
+                        mHandlerF.post(mActionF);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandlerF == null) return true;
+                        mHandlerF.removeCallbacks(mActionF);
+                        mHandlerF = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mActionF = new Runnable() {
+                @Override public void run() {
+                    Log.d(TAG,"Performing action...");
+                    String command = "winkr";
+                    // String command = RobotCommand.kRobot_MoveForwardSpeed5.getCommandAsHexString();
+                    try {
+                        mBTConnection.write(command.getBytes(Charset.defaultCharset()));
+                        mHandlerF.post(this); }
+                    catch (Exception e) { e.printStackTrace(); }
+                    //mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        robome.setVolume(12);
 
         mBTDevices = new ArrayList<>();
         //mBTConnection = new BTConnectionService(this);
 
 
+
         // Broadcast when band state changes (pairing)
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         registerReceiver(mBroadcastReceiver4, filter);
-
 
         //lvNewDevices.setOnItemClickListener(this);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -289,913 +837,21 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
         // System.out.println(robome.isRoboMeConnected());
         // System.out.println(robome.isHeadsetPluggedIn());
         //robome.startListening();
-
     }
-
 
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String text = intent.getStringExtra("theCommand");
 
+            incomingMessage.setText(text);
 
-            // speed change
-            if (text.contains("1"))
-            {
-                String speed1 = "Брзина на движење - еден. Ова е мојата најголема брзина на движење.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(speed1, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if (text.contains("2"))
-            {
-                String speed2 = "Брзина на движење - два. Но можам да се движам побрзо и поспоро.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(speed2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if (text.contains("3"))
-            {
-                String speed3 = "Брзина на движење - три. Но можам да се движам побрзо и поспоро.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(speed3, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if (text.contains("4"))
-            {
-                String speed4 = "Брзина на движење - четири. Но можам да се движам побрзо и поспоро.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(speed4, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if (text.contains("5"))
-            {
-                speed = 5;
-                String speed5 = "Брзина на движење - пет. Ова е моето најспоро движење";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(speed5, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-
-            // movement
-            if (text.contains("forward")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.valueOf("kRobot_MoveForwardSpeed" + speed));
-            }
-            if (text.contains("left")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.valueOf("kRobot_TurnLeftSpeed" + speed));
-            }
-            if (text.contains("right")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.valueOf("kRobot_TurnRightSpeed" + speed));
-            }
-
-            if (text.contains("backward")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.valueOf("kRobot_MoveBackwardSpeed" + speed));
-            }
-
-            // head tilts
-            if (text.contains("headup")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_HeadTiltAllUp);
-            }
-
-            if (text.contains("headdown")) {
-                if (!robome.isSendingCommand())
-                    robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_HeadTiltAllDown);
-            }
-
-            // chest and edge detection
-
-            if (text.contains("chestoff")) {
-                robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_ChestDetectOff);
-                String replika2 = "Сензор за препреки деактивиран.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-            if (text.contains("cheston")) {
-                robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_ChestDetectOn);
-                String replika2 = "Сензор за препреки активиран";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-
-            }
-            if (text.contains("edgeoff")) {
-                robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_EdgeDetectOff);
-                String replika2 = "Сензор за рабови - деактивиран";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-            if (text.contains("edgeon")) {
-                robome.sendCommand(RoboMeCommands.RobotCommand.kRobot_EdgeDetectOn);
-                String replika2 = "Сензор за рабови - активиран.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-
-
-            //speaking commands
-
-            if(text.contains("replikaeden"))
-            {
-                String replika1 = "Здраво на сите. Дозволете ми да се претставам. Јас сум Роби, комерцијален робот развиен од студентите од смерот КХИЕ.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika1, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-
-            }
-
-            if(text.contains("replikadva"))
-            {
-                String replika2 = "Дали сакате да дознаете нешто повеќе за мене?";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika2, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if(text.contains("replikatri"))
-            {
-                String replika3 = "Супер, ова е мојата приказна се надевам ќе ви се допанде.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika3, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if(text.contains("replikachetiri"))
-            {
-                String replika4 = "Јас постојам поради ентузијастичниот тим од студенти кои внесоа живот во мене. Долго време седев речиси заборавен во институтот за електроника. Изминатава есен тоа се промени.";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika4, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if(text.contains("replikapet"))
-            {
-                String replika5 = "После многу труд, најпрво научив да мрдам со својата глава, а потоа да се движам со најразлични брзини. Благодарение на моите вградени сензори можам да детектирам препреки и рабови за да не се повредам. Дали сакате да ги погледнете моите способности?";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika5, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if(text.contains("replikashest"))
-            {
-                String replika6 = "Неодамна почнав да зборувам и на македонски! Беше навистина напорно, но никогаш не се откажав, додека не ги кажав своите први зборови. Нестрпелив сум да дознаам за мојот понатамошен развој. Останувам во рацете на љубопитните студенти, инженери, коишто ќе се грижат за мене и ќе ме дооспособуваат. ";
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(replika6, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-            }
-
-            if(text.startsWith("@"))
-            {
-                String command = text.substring(1);
-                mouth.setVisibility(View.VISIBLE);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ttsGenerator.speak(command, TextToSpeech.QUEUE_FLUSH, null, "speech");
-                }
-                ttsGenerator.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-
-                    private  int start, end;
-                    private  long startTime;
-
-                    @Override
-                    public void onStart(String s) {
-                    }
-
-                    @Override
-                    public void onDone(String s) {
-                        if(s.equals("speech"))
-                        {
-                            mouth.setVisibility(View.INVISIBLE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String s) {
-
-                    }
-
-                    @Override
-                    public  void  onRangeStart(String s, int start, int end, int frame)
-                    {
-                        this.start = start;
-                        this.end = end;
-                        this.startTime = System.currentTimeMillis();
-                        mouth.setIndeterminate(false);
-                        mouth.setMax(end - start);
-                        mouth.setProgress(0);
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                        float speechRate = sp.getFloat("speech_rate0", 1.0f);
-                        int duration = (int) ((end - start) / speechRate) * 1000;
-                        ObjectAnimator animation = ObjectAnimator.ofInt(mouth, "progress", 0, end - start);
-                        animation.setDuration(duration);
-                        animation.setInterpolator(new LinearInterpolator());
-                        animation.start();
-                    }
-                });
-
-            }
-
-
-
-            // eyes commands
-            if(text.contains("winkl"))
-            {
-                wink.start();
-                eyeLeft.animate().alpha(0.0f).setDuration(250).withEndAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        eyeLeft.setVisibility((View.INVISIBLE));
-                        eyeLeft.animate().alpha(1.0f).setDuration(250).withEndAction(new Runnable() {
-                            @Override
-                            public void run() {
-                                eyeLeft.setVisibility(View.VISIBLE);
-                            }
-                        });
-                    }
-                });
-            }
-
-            if(text.contains("winkr"))
-            {
-                wink.start();
-                eyeRight.animate().alpha(0.0f).setDuration(250).withEndAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        eyeRight.setVisibility((View.INVISIBLE));
-                        eyeRight.animate().alpha(1.0f).setDuration(250).withEndAction(new Runnable() {
-                            @Override
-                            public void run() {
-                                eyeRight.setVisibility(View.VISIBLE);
-                            }
-                        });
-                    }
-                });
-            }
-
-
-
-
-
-
-            /**
-             if (text.contains("chest")) {
-             IRStatus status = IncomingRobotCommand.kRobotIncoming_IRStatus.readIRStatus();
-             Log.d(TAG, "CHEST = " + status.chestDetection);
-             Log.d(TAG, "EDGE = " + status.edgeDetection);
-
-             if (status.chestDetection)
-             robome.sendCommand(RobotCommand.kRobot_ChestDetectOff);
-             else
-             robome.sendCommand(RobotCommand.kRobot_ChestDetectOn);
-             }
-             if (text.contains("edge")) {
-             IRStatus status = IncomingRobotCommand.kRobotIncoming_IRStatus.readIRStatus();
-             if (status.edgeDetection)
-             robome.sendCommand(RobotCommand.kRobot_EdgeDetectOff);
-             else
-             robome.sendCommand(RobotCommand.kRobot_EdgeDetectOn);
-             }
-             **/
-
-            // robome.stopSending();
 
         }
-
-
     };
 
-
-
-
     @Override
-    public void commandReceived(RoboMeCommands.IncomingRobotCommand incomingRobotCommand) {
+    public void commandReceived(IncomingRobotCommand incomingRobotCommand) {
         Log.d(TAG, "CommandReceived: command number " + incomingRobotCommand.getCommand());
 
     }
@@ -1208,26 +864,23 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
     @Override
     public void roboMeDisconnected() {
         Log.d(TAG, "RoboMe disconnected.");
-
     }
 
     @Override
     public void headsetPluggedIn() {
         Log.d(TAG, "RoboMe headset plugged in.");
-
     }
 
     @Override
     public void headsetUnplugged() {
         Log.d(TAG, "RoboMe headset unplugged.");
-
     }
 
     @Override
     public void volumeChanged(float v) {
         Log.d(TAG, "Volume changed to " + v);
-
     }
+
 
     @Override
     public boolean onMenuItemClick(MenuItem item) {
@@ -1241,7 +894,6 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
             case R.id.btnDiscoverable:
                 Log.d(TAG, "Making device discoverable for 300 seconds");
                 mBTConnection = new BTConnectionService(this);
-
                 Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
                 discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
                 checkBTPermission(this,Manifest.permission.BLUETOOTH_ADVERTISE);
@@ -1260,30 +912,55 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
                 startConnection();
                 return true;
 
+            case R.id.speed1:
+                setSpeed("1");
+                return true;
+
+            case R.id.speed2:
+                setSpeed("2");
+                return true;
+
+            case R.id.speed3:
+                setSpeed("3");
+                return true;
+
+            case R.id.speed4:
+                setSpeed("4");
+                return true;
+
+            case R.id.speed5:
+                setSpeed("5");
+                return true;
+
             default:
-                Log.d(TAG, "connect context menu error");
+                Log.d(TAG, "LOG return FALSE");
+
                 return false;
 
         }
     }
 
-    public void startConnection() {
-        startBTConnection(mBTDevice, MY_UUID_INSECURE);
-        Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
+    public void setSpeed(String speed) {
+        try {
+            mBTConnection.write(speed.getBytes(Charset.defaultCharset()));
+        } catch (Exception e) {e.printStackTrace(); }
     }
 
+    public void startConnection() {
+        startBTConnection(mBTDevice, MY_UUID_INSECURE);
+    }
+
+    @SuppressLint("MissingPermission")
     public void startBTConnection(BluetoothDevice device, UUID uuid) {
         Log.d(TAG, "startClient: Started.");
 
         if (device != null) {
             try {
                 mBTConnection.startClient(device, uuid);
-            }
-            catch (Exception e) { e.printStackTrace(); }
+                Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {e.printStackTrace(); }
         }
-
     }
-
 
     //  @SuppressLint("MissingPermission")
     private void enableDisableBT() {
@@ -1313,6 +990,7 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
                 version = Build.VERSION_CODES.LOLLIPOP;
 
             if (Build.VERSION.SDK_INT >= version) {
+                Log.d(TAG, "*******************************************ENABLING PERMISSION");
                 ActivityCompat.requestPermissions(this, new String[]{permission}, 2);
                 return;
             }
@@ -1346,11 +1024,13 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
 
             mBluetoothAdapter.startDiscovery();
             IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+            discoverDevicesIntent.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
             registerReceiver(mBroadcastReceiver3, discoverDevicesIntent);
         }
         if (!mBluetoothAdapter.isDiscovering()) {
             mBluetoothAdapter.startDiscovery();
             IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+            discoverDevicesIntent.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
             registerReceiver(mBroadcastReceiver3, discoverDevicesIntent);
         }
 
@@ -1361,7 +1041,12 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
                 dialog.dismiss();
             }
         });
+
+
+
+
     }
+
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -1390,5 +1075,7 @@ public class MainActivity extends AppCompatActivity implements RoboMe.RoboMeList
 
 
     }
+
+
 }
 
